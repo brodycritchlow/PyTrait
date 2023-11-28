@@ -1,38 +1,44 @@
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+Ref = Generic[T]
+Mut = Ref[T]
+# pytrait/traits.py
 from copy import deepcopy as _dc
-from typing import TypeAliasType, TypeVar
+
+class Trait:
+    ...
+
+class Clone(Trait):
+    def clone(self: 'Mut') -> 'Mut':
+        return _dc(self)
 from fishhook import hook
 
-type Ref[T] = T
-type Mut[Ref] = Ref[T]
+@hook(TypeVar)
+def __invert__(self: T) -> 'Ref':
+    return Ref[T]
 
-class Trait[T]: ...
+def collect_user_functions():
+    user_functions = []
+    for trait_class in Trait.__subclasses__():
+        for func in dir(trait_class):
+            if callable(getattr(trait_class, func)) and not func.startswith("__"):
+                user_functions.append(func)
+    return user_functions
 
-@hook(TypeAliasType | TypeVar)
-def __invert__[T](self: T) -> Ref[T]:
-    return Ref[self]
+def create_a_function(*args, **kwargs):
+    def function_template(self, *args):
+        raise NotImplementedError(f"{self.__class__.__name__} does not have this trait enabled.")
+    return function_template
+from .traits import Clone
 
-class Clone[T](Trait):
-    def clone(self: Mut[T]) -> Mut[T]:
-        return _dc(self)
-
-class Example(Clone[int]): ...
+class Example(Clone):
+    pass
 
 x = Example()
 
-user_functions = []
-
-for trait_class in Trait.__subclasses__():
-    for func in dir(trait_class):
-        if callable(getattr(trait_class, func)) and not func.startswith("__"):
-            user_functions.append(func)
-
-def create_a_function(*args, **kwargs):
-
-    def function_template(self, *args):
-        raise NotImplementedError(f"{self.__class__.__name__} does not have this trait enabled.")
-
-    return function_template
-
-for i in user_functions:
+# Apply hooks dynamically to classes after creation
+for i in collect_user_functions():
     if_ = create_a_function()
     hook(object, func=if_, name=i)
