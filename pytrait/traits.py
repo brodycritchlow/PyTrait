@@ -1,8 +1,6 @@
 # pytrait/traits.py
 from copy import deepcopy as _dc
 
-from .types import Mut, Ref
-
 
 class Trait[T]:
     ...
